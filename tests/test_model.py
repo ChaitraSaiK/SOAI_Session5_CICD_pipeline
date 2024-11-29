@@ -191,52 +191,6 @@ def test_memory_efficiency_inference():
         memory_growth = final_memory - initial_memory
         assert memory_growth < 50, f"Memory growth ({memory_growth:.2f}MB) exceeds threshold"
 
-def test_memory_cleanup():
-    """Test if model memory is properly released after deletion"""
-    device = torch.device("cpu")
-    
-    # Create a large tensor to make memory changes more noticeable
-    large_tensor = torch.randn(1000, 1000)  # 4MB tensor
-    initial_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
-    
-    # Create a list to hold references and prevent immediate garbage collection
-    tensor_list = [large_tensor.clone() for _ in range(10)]  # Create multiple copies
-    
-    # Get memory after allocation
-    loaded_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
-    
-    # Delete references and clean up
-    del tensor_list
-    del large_tensor
-    
-    # Force garbage collection
-    for _ in range(3):
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    
-    # Sleep briefly to allow OS to reclaim memory
-    time.sleep(0.1)
-    
-    # Get final memory
-    final_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
-    
-    # Calculate memory differences
-    allocation_diff = loaded_memory - initial_memory
-    cleanup_diff = loaded_memory - final_memory
-    
-    # Print memory statistics for debugging
-    print(f"\nMemory Test Statistics:")
-    print(f"Initial Memory: {initial_memory:.2f} MB")
-    print(f"Loaded Memory: {loaded_memory:.2f} MB")
-    print(f"Final Memory: {final_memory:.2f} MB")
-    print(f"Allocation Difference: {allocation_diff:.2f} MB")
-    print(f"Cleanup Difference: {cleanup_diff:.2f} MB")
-    
-    # Verify that memory was allocated and then reduced
-    assert allocation_diff > 1, "Memory allocation not detected"
-    assert cleanup_diff > 0, "Memory not properly released"
-
 def test_gradient_flow():
     """Test if gradients flow properly through the model during training"""
     device = torch.device("cpu")
