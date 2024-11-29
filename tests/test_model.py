@@ -201,22 +201,43 @@ def test_memory_cleanup():
         pytest.skip("No trained model found")
     
     latest_model = max(model_files, key=os.path.getctime)
-    model = SimpleCNN().to(device)
-    model.load_state_dict(torch.load(latest_model, map_location=device))
     
-    # Get memory before deletion
-    pre_delete_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    # Create multiple models to make memory change more noticeable
+    models = []
+    num_models = 5
     
-    # Delete model and clean up
-    del model
+    # Get initial memory
+    initial_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
+    # Create models
+    for _ in range(num_models):
+        model = SimpleCNN().to(device)
+        model.load_state_dict(torch.load(latest_model, map_location=device))
+        models.append(model)
+    
+    # Get memory after creating models
+    loaded_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
+    # Delete models and clean up
+    for model in models:
+        del model
+    models = []
     gc.collect()
     torch.cuda.empty_cache() if torch.cuda.is_available() else None
     
-    # Get memory after deletion
-    post_delete_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    # Force more garbage collection
+    for _ in range(3):
+        gc.collect()
     
-    # Check if memory was released
-    assert post_delete_memory < pre_delete_memory, "Model memory not properly released"
+    # Get memory after deletion
+    final_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
+    # Check if memory was released (allowing for some overhead)
+    memory_diff = loaded_memory - final_memory
+    assert memory_diff > 0, f"Memory not released: Initial={initial_memory:.2f}MB, Loaded={loaded_memory:.2f}MB, Final={final_memory:.2f}MB, Diff={memory_diff:.2f}MB"
+    
+    # Additional check: final memory should be closer to initial memory than loaded memory
+    assert abs(final_memory - initial_memory) < abs(loaded_memory - initial_memory), "Memory cleanup not effective"
 
 def test_gradient_flow():
     """Test if gradients flow properly through the model during training"""
