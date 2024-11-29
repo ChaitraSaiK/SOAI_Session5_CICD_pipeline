@@ -40,7 +40,7 @@ def test_model_accuracy():
     model.load_state_dict(torch.load(latest_model, map_location=device))
     model.eval()
     
-    # Load test dataset
+    # Load test dataset with only normalization (no augmentation for testing)
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
