@@ -7,6 +7,7 @@ import glob
 import numpy as np
 import psutil
 import gc
+import time
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -240,3 +241,37 @@ def test_gradient_flow():
             assert param.grad is not None, f"No gradient for {name}"
             assert not torch.isnan(param.grad).any(), f"NaN gradient for {name}"
             assert not (param.grad == 0).all(), f"Zero gradient for {name}"
+
+def test_inference_speed():
+    """Test if model inference time is within acceptable range"""
+    device = torch.device("cpu")
+    model = SimpleCNN().to(device)
+    model.eval()
+    
+    # Prepare test input
+    batch_size = 32
+    test_input = torch.randn(batch_size, 1, 28, 28)
+    
+    # Warmup
+    with torch.no_grad():
+        for _ in range(5):
+            _ = model(test_input)
+    
+    # Measure inference time
+    times = []
+    num_trials = 10
+    
+    with torch.no_grad():
+        for _ in range(num_trials):
+            start_time = torch.cuda.Event(enable_timing=True) if torch.cuda.is_available() else time.time()
+            _ = model(test_input)
+            if torch.cuda.is_available():
+                end_time = torch.cuda.Event(enable_timing=True)
+                torch.cuda.synchronize()
+                times.append(start_time.elapsed_time(end_time))
+            else:
+                times.append(time.time() - start_time)
+    
+    avg_time = sum(times) / len(times)
+    # Check if average inference time is less than 50ms for batch of 32
+    assert avg_time < 50, f"Average inference time ({avg_time:.2f}ms) exceeds threshold"
