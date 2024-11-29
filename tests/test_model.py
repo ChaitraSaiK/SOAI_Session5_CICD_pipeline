@@ -1,8 +1,9 @@
 import torch
 import pytest
-from torchvision import transforms
+from torchvision import transforms, datasets
 from model.network import SimpleCNN
-import torch.nn.utils.prune as prune
+import os
+import glob
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -26,17 +27,17 @@ def test_model_architecture():
     assert output.shape[1] == 10, "Model should have 10 output classes"
 
 def test_model_accuracy():
-    from torchvision import datasets
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     
     # Load the latest trained model
-    import os
-    import glob
     model_files = glob.glob('models/model_*.pth')
+    if not model_files:
+        pytest.skip("No trained model found")
+    
     latest_model = max(model_files, key=os.path.getctime)
     
     model = SimpleCNN().to(device)
-    model.load_state_dict(torch.load(latest_model))
+    model.load_state_dict(torch.load(latest_model, map_location=device))
     model.eval()
     
     # Load test dataset

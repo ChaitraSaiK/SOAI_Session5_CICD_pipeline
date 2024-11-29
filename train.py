@@ -5,10 +5,12 @@ from torchvision import datasets, transforms
 from model.network import SimpleCNN
 from datetime import datetime
 import os
+from tqdm import tqdm
 
 def train():
-    # Set device
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # Set device (force CPU if CUDA is not available)
+    device = torch.device("cpu")
+    print(f"Using device: {device}")
     
     # Load MNIST dataset
     transform = transforms.Compose([
@@ -26,7 +28,8 @@ def train():
     
     # Train for 1 epoch
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
+    pbar = tqdm(train_loader, desc='Training')
+    for batch_idx, (data, target) in enumerate(pbar):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
         output = model(data)
@@ -34,8 +37,7 @@ def train():
         loss.backward()
         optimizer.step()
         
-        if batch_idx % 100 == 0:
-            print(f'Batch {batch_idx}/{len(train_loader)}, Loss: {loss.item():.4f}')
+        pbar.set_postfix({'loss': f'{loss.item():.4f}'})
     
     # Save model with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
