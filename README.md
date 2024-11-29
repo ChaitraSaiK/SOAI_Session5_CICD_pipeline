@@ -1,3 +1,5 @@
+[![ML Pipeline](https://github.com/ChaitraSaiK/SOAI_Session5_CICD_pipeline/actions/workflows/ml-pipeline.yml/badge.svg)](https://github.com/ChaitraSaiK/SOAI_Session5_CICD_pipeline/actions/workflows/ml-pipeline.yml)
+
 # Description:
 
 This project deals with a machine learning CI/CD pipeline for MNIST classification using PyTorch.
