@@ -1,6 +1,20 @@
-# ML CI/CD Pipeline
+# Description:
 
-A machine learning CI/CD pipeline for MNIST classification using PyTorch.
+This project deals with a machine learning CI/CD pipeline for MNIST classification using PyTorch.
+
+A CI/CD pipeline is a series of automated steps that streamline the process of creating, testing, and deploying software:
+
+CI - Stands for continuous integration, where developers frequently merge code changes into a central repository. This allows for early detection of issues.
+
+CD - Stands for continuous delivery or continuous deployment, which automates the release of the application to its intended environment.
+
+Benefits of CI/CD pipelines:
+- Faster feedback on code changes
+- Early detection of issues
+- Reduced manual errors
+- Faster software delivery
+- Improved collaboration among team members
+- Consistent and reliable deployment process
 
 ## Project Structure
 
