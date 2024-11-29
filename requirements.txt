@@ -1,4 +1,6 @@
 torch
 torchvision
 pytest
+pytest-html
 tqdm
+matplotlib
