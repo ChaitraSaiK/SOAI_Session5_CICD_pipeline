@@ -153,7 +153,7 @@ def test_prediction_confidence():
         avg_confidence = max_probs.mean().item()
         assert 0.5 < avg_confidence < 0.99, f"Average confidence {avg_confidence} is outside reasonable range"
 
-def test_memory_efficiency():
+def test_memory_efficiency_inference():
     """Test if model uses memory efficiently during inference"""
     device = torch.device("cpu")
     
@@ -189,12 +189,54 @@ def test_memory_efficiency():
         # Check memory growth
         memory_growth = final_memory - initial_memory
         assert memory_growth < 50, f"Memory growth ({memory_growth:.2f}MB) exceeds threshold"
-        
-        # Test memory release
-        del model
-        gc.collect()
-        torch.cuda.empty_cache() if torch.cuda.is_available() else None
-        
-        post_cleanup_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
-        cleanup_effectiveness = final_memory - post_cleanup_memory
-        assert cleanup_effectiveness > 0, "Model memory not properly released"
+
+def test_memory_cleanup():
+    """Test if model memory is properly released after deletion"""
+    device = torch.device("cpu")
+    
+    # Load the trained model
+    model_files = glob.glob('models/model_*.pth')
+    if not model_files:
+        pytest.skip("No trained model found")
+    
+    latest_model = max(model_files, key=os.path.getctime)
+    model = SimpleCNN().to(device)
+    model.load_state_dict(torch.load(latest_model, map_location=device))
+    
+    # Get memory before deletion
+    pre_delete_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
+    # Delete model and clean up
+    del model
+    gc.collect()
+    torch.cuda.empty_cache() if torch.cuda.is_available() else None
+    
+    # Get memory after deletion
+    post_delete_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+    
+    # Check if memory was released
+    assert post_delete_memory < pre_delete_memory, "Model memory not properly released"
+
+def test_gradient_flow():
+    """Test if gradients flow properly through the model during training"""
+    device = torch.device("cpu")
+    model = SimpleCNN().to(device)
+    
+    # Create a small batch of data
+    test_input = torch.randn(4, 1, 28, 28)
+    test_target = torch.tensor([0, 1, 2, 3])  # Random targets
+    
+    # Forward pass
+    output = model(test_input)
+    criterion = torch.nn.CrossEntropyLoss()
+    loss = criterion(output, test_target)
+    
+    # Backward pass
+    loss.backward()
+    
+    # Check if gradients exist and are not zero or nan
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            assert param.grad is not None, f"No gradient for {name}"
+            assert not torch.isnan(param.grad).any(), f"NaN gradient for {name}"
+            assert not (param.grad == 0).all(), f"Zero gradient for {name}"
