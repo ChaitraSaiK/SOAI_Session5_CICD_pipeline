@@ -18,7 +18,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install torch==2.2.0+cpu torchvision==0.17.0+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
-        pip install pytest tqdm matplotlib pytest-html
+        pip install pytest tqdm matplotlib pytest-html psutil pytest-md
     
     - name: Train model
       run: |
@@ -26,7 +26,17 @@ jobs:
     
     - name: Run tests
       run: |
-        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ -v --html=test-results.html --self-contained-html
+        echo "## Test Results" >> $GITHUB_STEP_SUMMARY
+        PYTHONPATH=$PYTHONPATH:$(pwd) pytest tests/ -v --html=test-results.html --self-contained-html --md-report >> $GITHUB_STEP_SUMMARY
+    
+    - name: Display Memory Usage
+      run: |
+        echo "## Memory Usage Summary" >> $GITHUB_STEP_SUMMARY
+        python -c "
+        import psutil
+        process = psutil.Process()
+        print(f'Memory Usage: {process.memory_info().rss / 1024 / 1024:.2f} MB', file=open('$GITHUB_STEP_SUMMARY', 'a'))
+        "
     
     - name: Upload trained model
       uses: actions/upload-artifact@v3
@@ -44,4 +54,6 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: test-results
-        path: test-results.html
+        path: |
+          test-results.html
+          .pytest_cache/md-report.md

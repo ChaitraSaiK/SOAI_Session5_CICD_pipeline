@@ -5,6 +5,8 @@ from model.network import SimpleCNN
 import os
 import glob
 import numpy as np
+import psutil
+import gc
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -150,3 +152,49 @@ def test_prediction_confidence():
         # Check if average confidence is reasonable (not too low or too high)
         avg_confidence = max_probs.mean().item()
         assert 0.5 < avg_confidence < 0.99, f"Average confidence {avg_confidence} is outside reasonable range"
+
+def test_memory_efficiency():
+    """Test if model uses memory efficiently during inference"""
+    device = torch.device("cpu")
+    
+    # Load the trained model
+    model_files = glob.glob('models/model_*.pth')
+    if not model_files:
+        pytest.skip("No trained model found")
+    
+    latest_model = max(model_files, key=os.path.getctime)
+    model = SimpleCNN().to(device)
+    model.load_state_dict(torch.load(latest_model, map_location=device))
+    model.eval()
+    
+    # Get initial memory usage
+    initial_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024  # in MB
+    
+    # Run multiple inference passes
+    batch_size = 32
+    num_passes = 10
+    test_input = torch.randn(batch_size, 1, 28, 28)
+    
+    with torch.no_grad():  # Ensure no gradients are stored
+        for _ in range(num_passes):
+            _ = model(test_input)
+            
+        # Force garbage collection
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+        
+        # Get final memory usage
+        final_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024  # in MB
+        
+        # Check memory growth
+        memory_growth = final_memory - initial_memory
+        assert memory_growth < 50, f"Memory growth ({memory_growth:.2f}MB) exceeds threshold"
+        
+        # Test memory release
+        del model
+        gc.collect()
+        torch.cuda.empty_cache() if torch.cuda.is_available() else None
+        
+        post_cleanup_memory = psutil.Process(os.getpid()).memory_info().rss / 1024 / 1024
+        cleanup_effectiveness = final_memory - post_cleanup_memory
+        assert cleanup_effectiveness > 0, "Model memory not properly released"
