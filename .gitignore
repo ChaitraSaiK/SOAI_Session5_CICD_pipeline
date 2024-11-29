@@ -47,4 +47,7 @@ ENV/
 # CUDA/GPU
 *.cuda
 *.cudnn
-*.cublas 
+*.cublas
+
+# Visualization
+visualization/

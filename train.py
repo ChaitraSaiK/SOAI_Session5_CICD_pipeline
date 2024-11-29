@@ -6,6 +6,47 @@ from model.network import SimpleCNN
 from datetime import datetime
 import os
 from tqdm import tqdm
+import torchvision.utils as vutils
+import matplotlib.pyplot as plt
+
+def save_augmentation_examples(train_transform, num_examples=5):
+    """Save examples of original and augmented images"""
+    # Create directory for visualization
+    os.makedirs('visualization', exist_ok=True)
+    
+    # Basic transform for original images
+    basic_transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.1307,), (0.3081,))
+    ])
+    
+    # Load some training examples
+    dataset = datasets.MNIST('data', train=True, download=True, transform=None)
+    
+    plt.figure(figsize=(10, 4))
+    for idx in range(num_examples):
+        # Get original image
+        img, label = dataset[idx]
+        
+        # Create original and augmented versions
+        orig_img = basic_transform(img)
+        aug_img = train_transform(img)
+        
+        # Plot original
+        plt.subplot(2, num_examples, idx + 1)
+        plt.imshow(orig_img.squeeze(), cmap='gray')
+        plt.axis('off')
+        plt.title(f'Original {label}')
+        
+        # Plot augmented
+        plt.subplot(2, num_examples, num_examples + idx + 1)
+        plt.imshow(aug_img.squeeze(), cmap='gray')
+        plt.axis('off')
+        plt.title(f'Augmented {label}')
+    
+    plt.tight_layout()
+    plt.savefig('visualization/augmentation_examples.png')
+    plt.close()
 
 def train():
     # Set device (force CPU if CUDA is not available)
@@ -25,11 +66,8 @@ def train():
         transforms.RandomErasing(p=0.2)  # Randomly erase parts of image
     ])
     
-    # Test transform without augmentation
-    test_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-    ])
+    # Save examples of augmented images
+    save_augmentation_examples(train_transform)
     
     train_dataset = datasets.MNIST('data', train=True, download=True, transform=train_transform)
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=64, shuffle=True)
