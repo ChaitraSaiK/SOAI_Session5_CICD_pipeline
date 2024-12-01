@@ -23,9 +23,9 @@ def test_model_architecture():
     except Exception as e:
         pytest.fail(f"Model failed to process 28x28 input: {str(e)}")
     
-    # Test 2: Check number of parameters
+    # Test 2: Check number of parameters (updated threshold)
     num_params = count_parameters(model)
-    assert num_params < 100000, f"Model has {num_params} parameters, should be less than 100000"
+    assert num_params < 25000, f"Model has {num_params} parameters, should be less than 25000"
     
     # Test 3: Check output dimension
     assert output.shape[1] == 10, "Model should have 10 output classes"
